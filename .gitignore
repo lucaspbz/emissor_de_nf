@@ -2,3 +2,8 @@
 *.log
 *.ipynb
 .vscode
+captchas
+dbcaptchas
+testesmetodo
+captcha.png
+db_maker.py

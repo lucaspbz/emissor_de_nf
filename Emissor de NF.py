@@ -1,15 +1,7 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import os
-import time
+from captcha_decoder import decode_image
 from dotenv import load_dotenv
-
 from selenium import webdriver
-
 
 load_dotenv()
 # Abrir o navegador e preencher dados para login
@@ -28,12 +20,28 @@ while True:
     try:
         cpfField = browser.find_element_by_xpath('//*[@id="login:username"]')
         cpfField.send_keys(cpf)
-        browser.find_element_by_xpath('//*[@id="login:password"]').send_keys(senha)
+        browser.find_element_by_xpath(
+            '//*[@id="login:password"]').send_keys(senha)
+
+        with open(f'captcha.png', 'wb') as file:
+            img = browser.find_element_by_xpath(
+                '//*[@id="login:captchaDecor"]/img')
+
+            src = img.get_attribute('src')
+            file.write(img.screenshot_as_png)
+
+        decoded_image = decode_image('captcha.png')
+
         browser.find_element_by_xpath(
             '//*[@id="login:captchaDecor:captchaLogin"]'
+        ).send_keys(decoded_image)
+
+        browser.find_element_by_xpath(
+            '//*[@id="login:botaoEntrar"]'
         ).click()
         break
-    except Exception:
+    except Exception as ex:
+        print(str(ex))
         continue
 
 
@@ -87,7 +95,8 @@ while True:
 
 
 # Muda para aba de Serviço
-browser.find_element_by_xpath('//*[@id="emitirnfseForm:abaServico_lbl"]').click()
+browser.find_element_by_xpath(
+    '//*[@id="emitirnfseForm:abaServico_lbl"]').click()
 
 while True:
     try:
@@ -109,6 +118,3 @@ browser.find_element_by_xpath(
 ).send_keys(valor_da_nota)
 
 browser.find_element_by_xpath('//*[@id="emitirnfseForm:btnCalcular"]').click()
-
-
-# In[ ]:
