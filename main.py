@@ -5,8 +5,7 @@ from selenium import webdriver
 
 load_dotenv()
 # Abrir o navegador e preencher dados para login
-
-browser = webdriver.Firefox()
+browser = webdriver.Chrome(executable_path='./bin/chromedriver')
 
 cpf = os.getenv("CPF")
 senha = os.getenv("PASS")
