@@ -1,11 +1,16 @@
 import os
-from captcha_decoder import decode_image
+
 from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+from captcha_decoder import decode_image
 
 load_dotenv()
+chrome_options = Options()
+chrome_options.add_experimental_option("detach", True)
 # Abrir o navegador e preencher dados para login
-browser = webdriver.Chrome(executable_path='./bin/chromedriver')
+browser = webdriver.Chrome(executable_path='./bin/chromedriver', chrome_options=chrome_options)
 
 cpf = os.getenv("CPF")
 senha = os.getenv("PASS")
@@ -22,7 +27,7 @@ while True:
         browser.find_element_by_xpath(
             '//*[@id="login:password"]').send_keys(senha)
 
-        with open(f'captcha.png', 'wb') as file:
+        with open('captcha.png', 'wb') as file:
             img = browser.find_element_by_xpath(
                 '//*[@id="login:captchaDecor"]/img')
 
@@ -55,6 +60,7 @@ while True:
     except Exception:
         continue
 
+
 # Altera o tipo do tomador para buscar por CNPJ
 while True:
     try:
@@ -65,21 +71,19 @@ while True:
     except Exception:
         continue
 
-
 while True:
     try:
         # Busca pelo CNPJ
         browser.find_element_by_xpath(
-            '//*[@id="emitirnfseForm:cpfPesquisaTomador"]'
+            '/html/body/div[1]/div[2]/form/table[1]/tbody/tr[2]/td[1]/table/tbody/tr/td/div[1]/div[3]/span/div/input[1]'
         ).clear()
+        browser.find_element_by_xpath('/html/body/div[1]/div[2]/form/table[1]/tbody/tr[2]/td[1]/table/tbody/tr/td/div[1]/div[3]/span/div/input[1]').send_keys(
+            cnpj
+        )
         break
 
     except Exception:
         continue
-
-browser.find_element_by_xpath('//*[@id="emitirnfseForm:cpfPesquisaTomador"]').send_keys(
-    cnpj
-)
 
 while True:
     try:
@@ -92,6 +96,13 @@ while True:
     except Exception:
         continue
 
+while True:
+    try:
+         element = browser.find_element_by_xpath('//*[@id="emitirnfseForm:idNome"]')
+         if element.get_attribute("value") != "":
+             break
+    except Exception:
+        continue
 
 # Muda para aba de Serviço
 browser.find_element_by_xpath(

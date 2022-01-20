@@ -1,3 +1,4 @@
+anticaptchaofficial==1.0.34
 async-generator==1.10
 attrs==21.2.0
 certifi==2021.10.8
@@ -7,6 +8,7 @@ cryptography==35.0.0
 h11==0.12.0
 idna==3.3
 outcome==1.1.0
+py==1.11.0
 pycparser==2.20
 pyOpenSSL==21.0.0
 python-dotenv==0.19.1
