@@ -4,6 +4,8 @@ from anticaptchaofficial.imagecaptcha import *
 
 def decode_image(image_path):
     client_key = os.getenv("API_KEY")
+    if client_key is None:
+        raise Exception("APIKEY do serviço de captcha não encontrada.")
     solver = imagecaptcha()
     solver.set_verbose(1)
     solver.set_key(client_key)
