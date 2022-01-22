@@ -6,39 +6,49 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
-from captcha_decoder import decode_image
+from captcha_decoder import Captcha_decoder
 
 
 class Emissor():
     browser: webdriver.Chrome
+    debug: bool
+
+    cpf:str
+    senha:str
+    cnpj:str
+    descricao:str
+    valor_da_nota:str
+
     def __init__(self) -> None:
         load_dotenv()
+        self.debug = os.getenv("DEBUG")=="true"
+        self.cpf = os.getenv("CPF")
+        if self.cpf is None:
+            self.cpf = input("Digite o CPF sem pontos ou espaços: \n")
+
+        self.senha = os.getenv("PASS")
+        if self.senha is None:
+            self.senha = input("Digite sua senha: \n")
+
+        self.cnpj = os.getenv("CNPJ")
+        if self.cnpj is None:
+            self.cnpj = input("Digite o CNPJ do tomador de servico, sem espacos, pontos ou barra: \n")
+
+        self.descricao = os.getenv("SERVICE_DESCRIPTION")
+        if self.descricao is None:
+            self.descricao = input("Digite a descricao do servico: \n")
+
+        self.valor_da_nota = os.getenv("VALOR_DA_NOTA")
+        if self.valor_da_nota is None:
+            self.valor_da_nota = input("Digite o valor da nota. Digite '10000' para R$100,00: \n")
         pass
 
-    def find_element_by_xpath(self, xpath:str):
+
+    def find_by_xpath(self, xpath:str):
         return self.browser.find_element(By.XPATH ,xpath)
 
+
     def emit(self):
-        cpf = os.getenv("CPF")
-        if cpf is None:
-            cpf = input("Digite o CPF sem pontos ou espaços: \n")
-
-        senha = os.getenv("PASS")
-        if senha is None:
-            senha = input("Digite sua senha: \n")
-
-        cnpj = os.getenv("CNPJ")
-        if cnpj is None:
-            cnpj = input("Digite o CNPJ do tomador de servico, sem espacos, pontos ou barra: \n")
-
-        descricao = os.getenv("SERVICE_DESCRIPTION")
-        if descricao is None:
-            descricao = input("Digite a descricao do servico: \n")
-
-        valor_da_nota = os.getenv("VALOR_DA_NOTA")
-        if valor_da_nota is None:
-            valor_da_nota = input("Digite o valor da nota. Digite '10000' para R$100,00: \n")
-
         chrome_options = Options()
         chrome_options.add_experimental_option("detach", True)
 
@@ -50,110 +60,94 @@ class Emissor():
         # Navegar para site correto
         self.browser.get("https://iss.fortaleza.ce.gov.br/")
 
+
         # Preencher campos e resolver captcha
-        while True:
-            try:
-                cpfField = self.find_element_by_xpath('//*[@id="login:username"]')
-                cpfField.send_keys(cpf)
-                self.find_element_by_xpath(
-                    '//*[@id="login:password"]').send_keys(senha)
-
-                with open('captcha.png', 'wb') as file:
-                    img = self.find_element_by_xpath(
-                        '//*[@id="login:captchaDecor"]/img')
-                    file.write(img.screenshot_as_png)
-
-                decoded_image = decode_image('captcha.png')
-
-                self.find_element_by_xpath(
-                    '//*[@id="login:captchaDecor:captchaLogin"]'
-                ).send_keys(decoded_image)
-
-                self.find_element_by_xpath(
-                    '//*[@id="login:botaoEntrar"]'
-                ).click()
-                break
-            except Exception as ex:
-                if "APIKEY do serviço de captcha não encontrada." in str(ex):
-                    self.browser.close()
-                    raise ex
-                continue
+        self._step(self._step_1)
 
 
         # Navegar para emissão de nota
-        while True:
-            try:
-                self.find_element_by_xpath("/html/body/div[1]/div[2]/form/div/div[2]/div[1]/a/i").click()
-                break
-            except Exception:
-                continue
+        self._step(lambda: self.find_by_xpath("/html/body/div[1]/div[2]/form/div/div[2]/div[1]/a/i").click())
 
 
         # Altera o tipo do tomador para buscar por CNPJ
-        while True:
-            try:
-                self.find_element_by_xpath('//*[@id="emitirnfseForm:tipoPesquisaTomadorRb:1"]').click()
-                break
-            except Exception:
-                continue
+        self._step(lambda: self.find_by_xpath('//*[@id="emitirnfseForm:tipoPesquisaTomadorRb:1"]').click())
 
-        while True:
-            try:
-                # Busca pelo CNPJ
-                self.find_element_by_xpath(
-                    '/html/body/div[1]/div[2]/form/table[1]/tbody/tr[2]/td[1]/table/tbody/tr/td/div[1]/div[3]/span/div/input[1]'
-                ).clear()
-                self.find_element_by_xpath('/html/body/div[1]/div[2]/form/table[1]/tbody/tr[2]/td[1]/table/tbody/tr/td/div[1]/div[3]/span/div/input[1]').send_keys(
-                    cnpj
-                )
-                break
 
-            except Exception:
-                continue
+        # Busca pelo CNPJ
+        self._step(self.step_4)
 
-        while True:
-            try:
-                # Aguarda aparecer a empresa e clicca
-                self.find_element_by_xpath(
-                    "/html/body/div[1]/div[1]/div/table/tbody/tr/td/div/table/tbody/tr[1]/td[2]"
-                ).click()
-                break
 
-            except Exception:
-                continue
+        # Aguarda aparecer a empresa e clicca
+        self._step(lambda: self.find_by_xpath("/html/body/div[1]/div[1]/div/table/tbody/tr/td/div/table/tbody/tr[1]/td[2]").click())
 
-        while True:
-            try:
-                element = self.find_element_by_xpath('//*[@id="emitirnfseForm:idNome"]')
-                if element.get_attribute("value") != "":
-                    break
-            except Exception:
-                continue
+
+        self._step(self.step_6)
+
 
         # Muda para aba de Serviço
-        self.find_element_by_xpath(
-            '//*[@id="emitirnfseForm:abaServico_lbl"]').click()
+        self.find_by_xpath('//*[@id="emitirnfseForm:abaServico_lbl"]').click()
 
+
+        # Seleciona a descrição CNAE
+        self._step(lambda: self.find_by_xpath("/html/body/div[2]/div[2]/form/table[1]/tbody/tr[2]/td[2]/table/tbody/tr/td/div[1]/div[5]/div[1]/select/option[2]").click())
+
+
+        self.find_by_xpath('//*[@id="emitirnfseForm:idDescricaoServico"]').send_keys(self.descricao)
+
+
+        self.find_by_xpath('//*[@id="emitirnfseForm:idValorServicoPrestado"]').send_keys(self.valor_da_nota)
+
+
+        self.find_by_xpath('//*[@id="emitirnfseForm:btnCalcular"]').click()
+
+
+    def step_6(self):
+        element = self.find_by_xpath('//*[@id="emitirnfseForm:idNome"]')
+        if element.get_attribute("value") == "":
+            raise Exception()
+
+
+    def step_4(self):
+        self.find_by_xpath(
+                    '/html/body/div[1]/div[2]/form/table[1]/tbody/tr[2]/td[1]/table/tbody/tr/td/div[1]/div[3]/span/div/input[1]'
+                ).clear()
+        self.find_by_xpath('/html/body/div[1]/div[2]/form/table[1]/tbody/tr[2]/td[1]/table/tbody/tr/td/div[1]/div[3]/span/div/input[1]').send_keys(
+                    self.cnpj
+                )
+
+
+    def _step_1(self):
+        cpfField = self.find_by_xpath('//*[@id="login:username"]')
+        cpfField.send_keys(self.cpf)
+        self.find_by_xpath(
+                    '//*[@id="login:password"]').send_keys(self.senha)
+
+        with open('captcha.png', 'wb') as file:
+            img = self.find_by_xpath(
+                        '//*[@id="login:captchaDecor"]/img')
+            file.write(img.screenshot_as_png)
+        client_key = os.getenv("API_KEY")
+
+        if client_key is not None:
+            image_decoder = Captcha_decoder(client_key, self.debug)
+            decoded_image = image_decoder.decode('captcha.png')
+                    
+            self.find_by_xpath('//*[@id="login:captchaDecor:captchaLogin"]').send_keys(decoded_image)
+
+            self.find_by_xpath('//*[@id="login:botaoEntrar"]').click()
+        else:
+            print("APIKEY não encontrada. Preencha o captcha manualmente")
+
+
+    def _step(self, cb):
         while True:
             try:
-                # Seleciona a descrição CNAE
-                self.find_element_by_xpath(
-                    "/html/body/div[2]/div[2]/form/table[1]/tbody/tr[2]/td[2]/table/tbody/tr/td/div[1]/div[5]/div[1]/select/option[2]"
-                ).click()
+                cb()
                 break
-            except Exception:
+            except Exception as ex:
+                if self.debug:
+                    print(ex)
                 continue
-
-
-        self.find_element_by_xpath('//*[@id="emitirnfseForm:idDescricaoServico"]').send_keys(
-            descricao
-        )
-
-        self.find_element_by_xpath(
-            '//*[@id="emitirnfseForm:idValorServicoPrestado"]'
-        ).send_keys(valor_da_nota)
-
-        self.find_element_by_xpath('//*[@id="emitirnfseForm:btnCalcular"]').click()
 
 emissor = Emissor()
 emissor.emit()
