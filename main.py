@@ -1,4 +1,6 @@
+import subprocess
 import os
+import sys
 
 from dotenv import load_dotenv
 from selenium import webdriver
@@ -18,9 +20,11 @@ class Emissor():
     cnpj:str
     descricao:str
     valor_da_nota:str
+    api_key:str
 
     def __init__(self) -> None:
         load_dotenv()
+        self.api_key = os.getenv("API_KEY")
         self.debug = os.getenv("DEBUG")=="true"
         self.cpf = os.getenv("CPF")
         if self.cpf is None:
@@ -51,11 +55,17 @@ class Emissor():
     def emit(self):
         chrome_options = Options()
         chrome_options.add_experimental_option("detach", True)
-
         service = Service(executable_path='./bin/chromedriver')
 
+        try:
+            self.browser = webdriver.Chrome(service=service, options=chrome_options)
+        except Exception as ex:
+            if "Message: 'chromedriver' executable needs to be in PATH." in str(ex) or "This version of ChromeDriver only supports Chrome version" in str(ex):
+                subprocess.call('scripts/update_chromedriver.sh')
+            print(str(ex))
+            sys.exit()
+
         # Abrir o navegador
-        self.browser = webdriver.Chrome(service=service, options=chrome_options)
 
         # Navegar para site correto
         self.browser.get("https://iss.fortaleza.ce.gov.br/")
@@ -117,21 +127,27 @@ class Emissor():
 
 
     def _step_1(self):
-        cpfField = self.find_by_xpath('//*[@id="login:username"]')
-        cpfField.send_keys(self.cpf)
-        self.find_by_xpath(
-                    '//*[@id="login:password"]').send_keys(self.senha)
+        cpf_field = self.find_by_xpath('//*[@id="login:username"]')
+        cpf_field.clear()
+        cpf_field.send_keys(self.cpf)
+
+        password_field = self.find_by_xpath(
+                    '//*[@id="login:password"]')
+        password_field.clear()
+        password_field.send_keys(self.senha)
 
         with open('captcha.png', 'wb') as file:
             img = self.find_by_xpath(
                         '//*[@id="login:captchaDecor"]/img')
             file.write(img.screenshot_as_png)
-        client_key = os.getenv("API_KEY")
+        
 
-        if client_key is not None:
-            image_decoder = Captcha_decoder(client_key, self.debug)
+        if self.api_key is not None:
+            image_decoder = Captcha_decoder(self.api_key, self.debug)
             decoded_image = image_decoder.decode('captcha.png')
-                    
+            if decoded_image == "ERROR_ZERO_BALANCE":
+                self.api_key = None
+                raise Exception("ERROR_ZERO_BALANCE")
             self.find_by_xpath('//*[@id="login:captchaDecor:captchaLogin"]').send_keys(decoded_image)
 
             self.find_by_xpath('//*[@id="login:botaoEntrar"]').click()

@@ -8,5 +8,4 @@ testesmetodo
 captcha.png
 db_maker.py
 venv
-bin/*
 __pycache__

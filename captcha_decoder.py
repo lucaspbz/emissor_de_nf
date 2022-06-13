@@ -10,4 +10,11 @@ class Captcha_decoder():
         pass
 
     def decode(self, image_path:str):
-        return self._solver.solve_and_return_solution(image_path)
+        captcha_text = self._solver.solve_and_return_solution(image_path)
+        if captcha_text != 0:
+            return captcha_text
+        elif "ERROR_ZERO_BALANCE" in self._solver.err_string:
+            return "ERROR_ZERO_BALANCE"
+        else:
+            raise Exception(self._solver.err_string)
+            
